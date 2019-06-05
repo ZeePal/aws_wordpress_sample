@@ -5,7 +5,7 @@
   },
   {
     "ParameterKey": "pSubnets",
-    "ParameterValue": "subnet-60161d07,subnet-60161d07,subnet-60161d07"
+    "ParameterValue": "subnet-60161d07,subnet-753a802d,subnet-a76763ee"
   },
   {
     "ParameterKey": "pDefaultSshKey",
@@ -13,6 +13,6 @@
   },
   {
     "ParameterKey": "pDatabaseUserPassword",
-    "ParameterValue": "pNW+DeCp!Hs+3p^a3jw#8&nf5R**x-C#82Tn>-3CX?qtw9z`tZnw>qR6=DXcUDU"
+    "ParameterValue": "pNW+DeCp!Hs+3p^a3jw#8&nf5R*"
   }
 ]

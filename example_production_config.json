@@ -5,7 +5,7 @@
   },
   {
     "ParameterKey": "pSubnets",
-    "ParameterValue": "subnet-60161d07,subnet-60161d07,subnet-60161d07"
+    "ParameterValue": "subnet-60161d07,subnet-753a802d,subnet-a76763ee"
   },
   {
     "ParameterKey": "pDefaultSshKey",
@@ -13,11 +13,11 @@
   },
   {
     "ParameterKey": "pWebServerMinCount",
-    "ParameterValue": 2
+    "ParameterValue": "2"
   },
   {
     "ParameterKey": "pWebServerMaxCount",
-    "ParameterValue": 4
+    "ParameterValue": "4"
   },
   {
     "ParameterKey": "pCreateFailoverDbInstance",
@@ -25,10 +25,10 @@
   },
   {
     "ParameterKey": "pDatabaseStorageSize",
-    "ParameterValue": 100
+    "ParameterValue": "100"
   },
   {
     "ParameterKey": "pDatabaseUserPassword",
-    "ParameterValue": "s2tXn('33:dw3wM~8j)vuKnjaNc.m#'u:R=:$2esUg,`_t!_ZBL*`FYCAppdkD9"
+    "ParameterValue": "s2tXn('33:dw3wM~8j)vuKnjaNc.m#"
   }
 ]

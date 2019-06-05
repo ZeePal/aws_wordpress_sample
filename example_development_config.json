@@ -1,0 +1,18 @@
+[
+  {
+    "ParameterKey": "pVpc",
+    "ParameterValue": "vpc-d53a19b2"
+  },
+  {
+    "ParameterKey": "pSubnets",
+    "ParameterValue": "subnet-60161d07,subnet-60161d07,subnet-60161d07"
+  },
+  {
+    "ParameterKey": "pDefaultSshKey",
+    "ParameterValue": "developer"
+  },
+  {
+    "ParameterKey": "pDatabaseUserPassword",
+    "ParameterValue": "pNW+DeCp!Hs+3p^a3jw#8&nf5R**x-C#82Tn>-3CX?qtw9z`tZnw>qR6=DXcUDU"
+  }
+]

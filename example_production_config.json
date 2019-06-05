@@ -1,0 +1,34 @@
+[
+  {
+    "ParameterKey": "pVpc",
+    "ParameterValue": "vpc-d53a19b2"
+  },
+  {
+    "ParameterKey": "pSubnets",
+    "ParameterValue": "subnet-60161d07,subnet-60161d07,subnet-60161d07"
+  },
+  {
+    "ParameterKey": "pDefaultSshKey",
+    "ParameterValue": "infrastructure"
+  },
+  {
+    "ParameterKey": "pWebServerMinCount",
+    "ParameterValue": 2
+  },
+  {
+    "ParameterKey": "pWebServerMaxCount",
+    "ParameterValue": 4
+  },
+  {
+    "ParameterKey": "pCreateFailoverDbInstance",
+    "ParameterValue": "true"
+  },
+  {
+    "ParameterKey": "pDatabaseStorageSize",
+    "ParameterValue": 100
+  },
+  {
+    "ParameterKey": "pDatabaseUserPassword",
+    "ParameterValue": "s2tXn('33:dw3wM~8j)vuKnjaNc.m#'u:R=:$2esUg,`_t!_ZBL*`FYCAppdkD9"
+  }
+]

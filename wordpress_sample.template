@@ -1,0 +1,389 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "Sample cloudformation template to create a wordpress website",
+  "Parameters": {
+    "pVpc": {
+      "Description": "What VPC should this stack be deployed into?",
+      "Type": "AWS::EC2::VPC::Id"
+    },
+    "pSubnets": {
+      "Description": "What Subnets should this stack be deployed into?",
+      "Type": "List<AWS::EC2::Subnet::Id>"
+    },
+    "pDefaultSshKey": {
+      "Description": "What default SSH key should be installed onto the web servers?",
+      "Type": "String"
+    },
+    "pSshSourceCidr": {
+      "Description": "Should the webservers be restricted on who can attempt to ssh into them?",
+      "Type": "String",
+      "Default": "0.0.0.0/0"
+    },
+    "pWebServerAmi": {
+      "Description": "What AMI should the web servers be based off?",
+      "Type": "String",
+      "Default": "ami-0b76c3b150c6b1423"
+    },
+    "pWebServerInstanceSize": {
+      "Description": "Which instance size should run the web servers?",
+      "Type": "String",
+      "Default": "t2.micro"
+    },
+    "pWebServerMinCount": {
+      "Description": "How many web servers should be running at all times?",
+      "Type": "Number",
+      "Default": 1
+    },
+    "pWebServerMaxCount": {
+      "Description": "Whats the limit on how many web servers can run under load?",
+      "Type": "Number",
+      "Default": 1
+    },
+    "pWordpressSourceTarball": {
+      "Description": "What web address to pull the wordpress tarball from?",
+      "Type": "String",
+      "Default": "https://wordpress.org/wordpress-5.2.1.tar.gz"
+    },
+    "pDatabaseName": {
+      "Description": "What should the default database be called?",
+      "Type": "String",
+      "Default": "wordpress"
+    },
+    "pDatabaseInstanceSize": {
+      "Description": "Which DB instance size should host the database?",
+      "Type": "String",
+      "Default": "db.t2.micro"
+    },
+    "pDatabaseStorageSize": {
+      "Description": "How much storage in gigabytes should be allocated to the RDS instance?",
+      "Type": "Number",
+      "Default": 20
+    },
+    "pDatabaseUsername": {
+      "Description": "What MySQL Username should be used for the instance administrator?",
+      "Type": "String",
+      "Default": "wordpress"
+    },
+    "pDatabaseUserPassword": {
+      "Description": "What MySQL Password should be used for the instance administrator?",
+      "Type": "String"
+    },
+    "pCreateFailoverDbInstance": {
+      "Description": "Should we create an RZ redundant instance on standby?",
+      "Type": "String",
+      "Default": "false",
+      "AllowedValues": [
+        "true",
+        "false"
+      ]
+    }
+  },
+  "Resources": {
+    "SecurityGroupLoadBalancer": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allows access to the load balancers from the internet",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "CidrIp": "0.0.0.0/0"
+          }
+        ],
+        "VpcId": {
+          "Ref": "pVpc"
+        }
+      }
+    },
+    "SecurityGroupWebServer": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allows access to the wordpress website on the web servers",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "80",
+            "ToPort": "80",
+            "SourceSecurityGroupId": {
+              "Ref": "SecurityGroupLoadBalancer"
+            }
+          },
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "22",
+            "ToPort": "22",
+            "CidrIp": {
+              "Ref": "pSshSourceCidr"
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "pVpc"
+        }
+      }
+    },
+    "SecurityGroupDb": {
+      "Type": "AWS::EC2::SecurityGroup",
+      "Properties": {
+        "GroupDescription": "Allows access to wordpress MySQL databases",
+        "SecurityGroupIngress": [
+          {
+            "IpProtocol": "tcp",
+            "FromPort": "3306",
+            "ToPort": "3306",
+            "SourceSecurityGroupId": {
+              "Ref": "SecurityGroupWebServer"
+            }
+          }
+        ],
+        "VpcId": {
+          "Ref": "pVpc"
+        }
+      }
+    },
+    "RdsDbInstance": {
+      "Type": "AWS::RDS::DBInstance",
+      "Properties": {
+        "DBName": {
+          "Ref": "pDatabaseName"
+        },
+        "AllocatedStorage": {
+          "Ref": "pDatabaseStorageSize"
+        },
+        "DBInstanceClass": {
+          "Ref": "pDatabaseInstanceSize"
+        },
+        "VPCSecurityGroups": [
+          {
+            "Ref": "SecurityGroupDb"
+          }
+        ],
+        "Engine": "MySQL",
+        "MasterUsername": {
+          "Ref": "pDatabaseUsername"
+        },
+        "MasterUserPassword": {
+          "Ref": "pDatabaseUserPassword"
+        },
+        "MultiAZ": {
+          "Ref": "pCreateFailoverDbInstance"
+        },
+        "PubliclyAccessible": "false"
+      }
+    },
+    "LoadBalancer": {
+      "Type": "AWS::ElasticLoadBalancingV2::LoadBalancer",
+      "Properties": {
+        "Scheme": "internet-facing",
+        "Subnets": {
+          "Ref": "pSubnets"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "SecurityGroupLoadBalancer"
+          }
+        ]
+      }
+    },
+    "LoadBalancerListener": {
+      "Type": "AWS::ElasticLoadBalancingV2::Listener",
+      "Properties": {
+        "DefaultActions": [
+          {
+            "Type": "forward",
+            "TargetGroupArn": {
+              "Ref": "LoadBalancerTargetGroup"
+            }
+          }
+        ],
+        "LoadBalancerArn": {
+          "Ref": "LoadBalancer"
+        },
+        "Port": "80",
+        "Protocol": "HTTP"
+      }
+    },
+    "LoadBalancerTargetGroup": {
+      "Type": "AWS::ElasticLoadBalancingV2::TargetGroup",
+      "Properties": {
+        "Port": 80,
+        "Protocol": "HTTP",
+        "VpcId": {
+          "Ref": "pVpc"
+        },
+        "TargetGroupAttributes": [
+          {
+            "Key": "stickiness.enabled",
+            "Value": "true"
+          },
+          {
+            "Key": "stickiness.lb_cookie.duration_seconds",
+            "Value": "1"
+          }
+        ]
+      }
+    },
+    "AutoScalingGroup": {
+      "Type": "AWS::AutoScaling::AutoScalingGroup",
+      "Properties": {
+        "TargetGroupARNs": [
+          {
+            "Ref": "LoadBalancerTargetGroup"
+          }
+        ],
+        "VPCZoneIdentifier": {
+          "Ref": "pSubnets"
+        },
+        "LaunchConfigurationName": {
+          "Ref": "WebServerLaunchConfig"
+        },
+        "MinSize": {
+          "Ref": "pWebServerMinCount"
+        },
+        "MaxSize": {
+          "Ref": "pWebServerMaxCount"
+        }
+      }
+    },
+    "WebServerLaunchConfig": {
+      "Type": "AWS::AutoScaling::LaunchConfiguration",
+      "Properties": {
+        "ImageId": {
+          "Ref": "pWebServerAmi"
+        },
+        "InstanceType": {
+          "Ref": "pWebServerInstanceSize"
+        },
+        "KeyName": {
+          "Ref": "pDefaultSshKey"
+        },
+        "SecurityGroups": [
+          {
+            "Ref": "SecurityGroupWebServer"
+          }
+        ],
+        "UserData": {
+          "Fn::Base64": {
+            "Fn::Join": [
+              "\n",
+              [
+                "#cloud-config",
+                "bootcmd:",
+                " - add-apt-repository universe",
+                "repo_update: true",
+                "",
+                "packages:",
+                " - nginx",
+                " - php-fpm",
+                " - php-mysql",
+                "",
+                "write_files:",
+                " - content: |",
+                "     server {",
+                "             listen 80 default_server;",
+                "             listen [::]:80 default_server;",
+                "             server_name _;",
+                "     ",
+                "             root /var/www/html;",
+                "             index index.php index.html index.htm index.nginx-debian.html;",
+                "     ",
+                "             location / {",
+                "                     try_files $uri $uri/ =404;",
+                "             }",
+                "     ",
+                "             location ~ \\.php$ {",
+                "                     include snippets/fastcgi-php.conf;",
+                "                     fastcgi_pass unix:/var/run/php/php7.2-fpm.sock;",
+                "             }",
+                "     ",
+                "             location ~ /\\.ht {",
+                "                     deny all;",
+                "             }",
+                "     }",
+                "   path: /etc/nginx/sites-available/wordpress",
+                "   owner: root:root",
+                "   permissions: '0644'",
+                " - content: |",
+                "     <?php",
+                {
+                  "Fn::Sub": "     define('DB_NAME', '${pDatabaseName}');"
+                },
+                {
+                  "Fn::Sub": "     define('DB_USER', '${pDatabaseUsername}');"
+                },
+                {
+                  "Fn::Sub": "     define('DB_PASSWORD', '${pDatabaseUserPassword}');"
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "     define('DB_HOST', '",
+                      {
+                        "Fn::GetAtt": [
+                          "RdsDbInstance",
+                          "Endpoint.Address"
+                        ]
+                      },
+                      "');"
+                    ]
+                  ]
+                },
+                "     define('DB_CHARSET', 'utf8');",
+                "     define('DB_COLLATE', '');",
+                "     ",
+                "     define('AUTH_KEY',         'crrsdhr&nfZpv3l_3he5u;9MhyW|:/[l+Ox52/^)op`%7ny[rT~L:(W+^tXqQD4y');",
+                "     define('SECURE_AUTH_KEY',  '-<Fd?x3|5I-SjJv9exz%IRl9-h@+gF6>!S{M7[!x(qV:ayD+!mN6C/5mvuL|5me9');",
+                "     define('LOGGED_IN_KEY',    'Yjs.QD;#NmK+,6*H01ro[L-S^lRY3y%J^KLbKUz|HLS,iM&J5WScP-C>h;~GkQ(=');",
+                "     define('NONCE_KEY',        '#a:u%!;3Vq|mC|80Q&PIqMsx54Bn,[ KRURtaBZ*fx#+N,N|+txKb@b4//iJRS0x');",
+                "     define('AUTH_SALT',        '+F5giHjhqh=I9H|{lkiNX[M2<?e<dQ`|DeM. `mf: F^>+)j^??h=(M<`i!9P``x');",
+                "     define('SECURE_AUTH_SALT', 'f~R[-^_W(+A+(+4flNQ|KqtA4@9+%LFn2obTunX^fJ?d1s ;.`cLGaqp3; laHp@');",
+                "     define('LOGGED_IN_SALT',   '-Um3uNG?#xa(+jt(1vxm<L8tYS9kwISAU)4-/| +LBu8MT_<5GWSq-k7e(N;jcIs');",
+                "     define('NONCE_SALT',       '`nU^}q?f7|7DqP)8Z!eAaNtKf-dfFtfWr5hUQmfE8^n0U2-@-Z>ztDW{[W_g|~:F');",
+                "     ",
+                "     $table_prefix = 'wp_';",
+                "     ",
+                "     define( 'WP_DEBUG', false );",
+                "     if ( ! defined( 'ABSPATH' ) ) {",
+                "     \tdefine( 'ABSPATH', dirname( __FILE__ ) . '/' );",
+                "     }",
+                "     require_once( ABSPATH . 'wp-settings.php' );",
+                "   path: /var/www/html/wp-config.php",
+                "   owner: root:root",
+                "   permissions: '0644'",
+                "",
+                "runcmd:",
+                {
+                  "Fn::Sub": " - wget ${pWordpressSourceTarball} -O /tmp/wordpress.tar.gz"
+                },
+                " - tar xf /tmp/wordpress.tar.gz -C /var/www/html --strip-components=1",
+                " - unlink /etc/nginx/sites-enabled/default",
+                " - ln -s /etc/nginx/sites-available/wordpress /etc/nginx/sites-enabled/wordpress",
+                " - service nginx restart"
+              ]
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Outputs": {
+    "oWebsiteUrl": {
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "http://",
+            {
+              "Fn::GetAtt": [
+                "LoadBalancer",
+                "DNSName"
+              ]
+            }
+          ]
+        ]
+      }
+    }
+  }
+}
